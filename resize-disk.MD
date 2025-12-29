@@ -1,56 +1,33 @@
-# Send Gmail from Linux
+# Resize EBS Storage
 
-Install msmtp
+check the partitions
 ```
-sudo dnf install msmtp -y
-```
-
-2 Factor authentication should be switched on, go to your google account and switch on. Then
-
-Create your app-password in Google
-```
-https://myaccount.google.com/apppasswords
+lsblk
 ```
 
-Create Global Config File
+Use a tool like growpart to resize the existing partition to fill the available space.This will resize the fourth partition (nvme0n1p4) to use the remaining unallocated space on the disk.
 ```
-sudo vi /etc/msmtprc
-```
-```
-defaults
-auth           on
-tls            on
-tls_trust_file /etc/ssl/certs/ca-bundle.crt
-logfile        /var/log/msmtp.log
-
-account        gmail
-host           smtp.gmail.com
-port           587
-from           your_email@gmail.com
-user           your_email@gmail.com
-password       your_app_password
-
-account default : gmail
+sudo growpart /dev/nvme0n1 4
 ```
 
-Set Secure, World-Readable Permissions
+Extend the Logical Volumes
+Decide how much space to allocate to each logical volume. For example, to extend both the root and /var logical volumes:
+
 ```
-sudo chmod 644 /etc/msmtprc
+sudo lvextend -L +20G /dev/RootVG/rootVol
+sudo lvextend -L +30G /dev/RootVG/varVol
 ```
 
-Create Logfile
+After extending the logical volumes, resize the filesystems to utilize the additional space.
+
+For the root filesystem:
+
 ```
-sudo touch /var/log/msmtp.log
-sudo chmod 666 /var/log/msmtp.log
+sudo xfs_growfs /
 ```
 
-Test as Any User
+For the /var filesystem:
+
 ```
-{
-echo "To: $TO_ADDRESS"
-echo "Subject: $SUBJECT"
-echo "Content-Type: text/html"
-echo ""
-echo "$EMAIL_BODY"
-} | msmtp "$TO_ADDRESS"
+sudo xfs_growfs /var
 ```
